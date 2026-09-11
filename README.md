@@ -31,7 +31,6 @@ A hunting, trapper-vending, and butcher system for the RSG Framework (RedM). Pla
 - 12 preconfigured butcher locations across the map with map blips
 - Sell whole hunted animals directly for cash, with quality-based reward multipliers (poor / good / perfect)
 - 70+ supported animal species in the sellable-animal list, including legendary variants
-- Buy items (e.g. knives) from the butcher's shop, with optional persistent database-backed stock
 - Keybind or `ox_target` interaction support (configurable)
 - Dynamic NPC spawning/despawning based on player distance, with fade in/out animations
 - Anti-spam cooldown protection on both client and server
