@@ -3,7 +3,7 @@ local vendorPeds = {}
 lib.locale()
 
 CreateThread(function()
-    for _, vendor in ipairs(Config.Vendors) do
+    for vendorIndex, vendor in ipairs(Config.Vendors) do
         local model = GetHashKey(vendor.pedModel)
         RequestModel(model)
         local timeout = 0
@@ -28,21 +28,12 @@ CreateThread(function()
 
         exports.ox_target:addLocalEntity(ped, {
             {
-                name = 'vendor_shop',
-                label = locale('open_shop'),
-                icon = 'fa-solid fa-store',
-                distance = 2.0,
-                onSelect = function()
-                    OpenVendorMenu(vendor.items)
-                end
-            },
-            {
                 name = 'vendor_sell',
                 label = locale('sell_items'),
                 icon = 'fa-solid fa-hand-holding-dollar',
                 distance = 2.0,
                 onSelect = function()
-                    OpenSellMenu(vendor.items)
+                    OpenSellMenu(vendorIndex)
                 end
             }
         })
@@ -51,83 +42,71 @@ CreateThread(function()
     end
 end)
 
-function OpenVendorMenu(vendorItems)
-    local stockData = lib.callback.await('rsg-hunting:server:getStock', false)
-    local options = {}
+--------------------------------------
+-- trapper sell UI (NUI)
+--------------------------------------
+local sellUiOpen = false
+local currentVendor = nil
 
-    for _, item in ipairs(vendorItems) do
-        if item.canBuy then
-            local stock = stockData[item.name] or 0
-            table.insert(options, {
-                title = item.label,
-                description = locale('price_stock', item.buyPrice, stock),
-                icon = 'nui://' .. Config.Image .. item.name .. '.png',
-                disabled = stock <= 0,
-                onSelect = function()
-                    local input = lib.inputDialog(locale('buy_title', item.label), {
-                        { type = 'number', label = locale('amount'), default = 1, min = 1, max = stock }
-                    })
-                    if input then
-                        TriggerServerEvent('rsg-hunting:server:buyItem', item.name, input[1])
-                    end
-                end
-            })
-        end
-    end
-
-    lib.registerContext({
-        id = 'vendor_shop_menu',
-        title = locale('vendor_shop_title'),
-        options = options
-    })
-    lib.showContext('vendor_shop_menu')
+local function closeSellUi()
+    if not sellUiOpen then return end
+    sellUiOpen = false
+    currentVendor = nil
+    SetNuiFocus(false, false)
+    SendNUIMessage({ action = 'close' })
 end
 
-function OpenSellMenu(vendorItems)
-    local PlayerData = RSGCore.Functions.GetPlayerData()
-    local inventory = PlayerData.items or {}
-    local options = {}
+function OpenSellMenu(vendorIndex)
+    if sellUiOpen then return end
+    local data = lib.callback.await('rsg-hunting:server:getSellData', false, vendorIndex)
+    if not data then return end
 
-    for _, invItem in pairs(inventory) do
-        if invItem then
-            for _, vendorItem in ipairs(vendorItems) do
-                if vendorItem.name == invItem.name and vendorItem.canSell then
-                    table.insert(options, {
-                        title = invItem.label,
-                        description = locale('sell_price_inv', vendorItem.sellPrice, invItem.amount),
-                        icon = invItem.image and ('nui://' .. Config.Image .. invItem.image) or 'fa-solid fa-box',
-                        onSelect = function()
-                            local input = lib.inputDialog(locale('sell_title', invItem.label), {
-                                { type = 'number', label = locale('amount'), default = 1, min = 1, max = invItem.amount }
-                            })
-                            if input then
-                                TriggerServerEvent('rsg-hunting:server:sellItem', invItem.name, input[1])
-                            end
-                        end
-                    })
-                    break
-                end
+    sellUiOpen = true
+    currentVendor = vendorIndex
+    SetNuiFocus(true, true)
+    SendNUIMessage({
+        action = 'open',
+        title = data.title,
+        imagePath = 'nui://' .. Config.Image,
+        items = data.items,
+    })
+end
+
+RegisterNUICallback('close', function(_, cb)
+    closeSellUi()
+    cb('ok')
+end)
+
+RegisterNUICallback('sellBasket', function(basket, cb)
+    if not sellUiOpen or not currentVendor then return cb({ ok = false }) end
+    local result = lib.callback.await('rsg-hunting:server:sellBasket', false, currentVendor, basket) or { ok = false }
+    if not result.ok then
+        lib.notify({ title = locale('vendor'), description = result.message or locale('sale_failed'), type = 'error' })
+    end
+    cb(result)
+end)
+
+-- close the UI if the player wanders off / dies while it's open
+CreateThread(function()
+    while true do
+        if sellUiOpen and currentVendor then
+            local vendor = Config.Vendors[currentVendor]
+            local ped = PlayerPedId()
+            if IsEntityDead(ped) or #(GetEntityCoords(ped) - vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z)) > 5.0 then
+                closeSellUi()
             end
+            Wait(500)
+        else
+            Wait(1000)
         end
     end
-
-    if #options == 0 then
-        lib.notify({ title = locale('vendor'), description = locale('no_items_to_sell'), type = 'inform' })
-        return
-    end
-
-    lib.registerContext({
-        id = 'vendor_sell_menu',
-        title = locale('vendor_sell_title'),
-        options = options
-    })
-    lib.showContext('vendor_sell_menu')
-end
+end)
 
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() == resourceName then
         for _, ped in ipairs(vendorPeds) do
             DeleteEntity(ped)
         end
+        if sellUiOpen then SetNuiFocus(false, false) end
     end
 end)
