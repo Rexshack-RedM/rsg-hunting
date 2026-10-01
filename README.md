@@ -23,8 +23,18 @@ A hunting, trapper-vending, and butcher system for the RSG Framework (RedM). Pla
 
 ### Trapper Vendors
 - 5 preconfigured trapper vendor locations with map blips
-- Full buy/sell shop per vendor, built on `ox_lib` menus
-- Stock-based dynamic pricing (`stockBasedPrice`) with independent buy/sell prices, initial stock, and max stock per item
+- Sell-only trappers with a custom NUI sell screen (RDR2 leather & gold style)
+  - Shows every item the trapper buys, with images, current price and how many the player owns
+  - Search and "owned only" filter; owned items are listed first
+  - Pick a quantity per item (− / + / Max or type it) and add it to a basket
+  - **Add All Owned** fills the basket with every accepted item in one click
+  - Edit or remove basket lines, then confirm to sell the whole basket in one transaction
+  - Pays the exact amount (rounded to the cent) — no whole-dollar rounding
+  - Closes automatically if the player walks away or dies; `Esc` closes it
+- Stock-based dynamic pricing (`stockBasedPrice`): the trapper pays 1.25x below 50% of `maxStock` and 1.5x below 25%
+- Stock builds up as players sell; saved to `vendor_stock.json`
+- Server-side validation: distance check, per-vendor accepted items, ownership check, cooldown, and rollback if an item removal fails
+- All notifications via `ox_lib` notify
 - Per-vendor item catalogs — over 90 sellable resource items (skins, pelts, hides, horns, feathers, beaks, hearts, meat, etc.)
 
 ### Butcher Shops
@@ -66,7 +76,7 @@ A hunting, trapper-vending, and butcher system for the RSG Framework (RedM). Pla
 4. Start (or restart) your server and check the console for:
    - `[rsg-hunting] Butcher server cache initialized with XX animals`
    - No errors from the version checker
-5. Visit a trapper or butcher location in-game and confirm the blip, prompt/target interaction, and menu all appear.
+5. Visit a trapper or butcher location in-game and confirm the blip, target interaction, and sell screen / menu all appear.
 
 ### Database Setup (optional)
 If `Config.PersistStock` is enabled, the butcher shop's stock is saved through `rsg-inventory`'s shop system — make sure your database is configured as per `rsg-inventory`'s own setup instructions.
@@ -86,7 +96,7 @@ Config.BlipScale = 0.2
 ```
 
 ### Trapper Vendors (`Config.Vendors`)
-Each entry defines a trapper NPC/vendor location and its shop catalog:
+Each entry defines a trapper NPC location and the items it buys:
 ```lua
 {
     pedModel = 'u_m_m_sdtrapper_01',
@@ -95,13 +105,23 @@ Each entry defines a trapper NPC/vendor location and its shop catalog:
     blipcoords = vector3(-333.9737, 773.49157, 116.22194),
     showblip = true,
     items = {
-        { name = 'resource_skin_bear', label = 'Bear Skin', buyPrice = 16, sellPrice = 1.25,
-          initialStock = 3, maxStock = 30, canBuy = true, canSell = true, stockBasedPrice = true },
+        { name = 'resource_skin_bear', label = 'Bear Skin', sellPrice = 1.25, maxStock = 100, canSell = true, stockBasedPrice = true },
         -- ...
     }
 }
 ```
-Add or remove vendors, or edit `items` per vendor, to change what each trapper buys/sells.
+| Field | Description |
+|---|---|
+| `name` | Item name (must exist in your shared items) |
+| `label` | Name shown in the sell screen |
+| `sellPrice` | Base price the trapper pays per item |
+| `maxStock` | Used for stock-based pricing ratios |
+| `canSell` | `true` to show the item in the sell screen |
+| `stockBasedPrice` | Raise the price when the trapper's stock is low |
+
+Add or remove vendors, or edit `items` per vendor, to change what each trapper buys. Item images are loaded from `Config.Image` using the item's `image` from shared items (falls back to `<name>.png`).
+
+**Resetting trapper stock:** run `resetvendorstock` from the server console to reset all trapper stock to 0.
 
 ### Huntable Animals (`Config.Animals`)
 Each entry maps a ped model hash to up to 5 reward items awarded on a successful skin:
@@ -214,6 +234,17 @@ Config.FadeIn = true          -- fade NPCs in/out when spawning/despawning
 | `rsg-hunting:server:butcher:reward` | Validates the animal/quality and pays out the butcher sale |
 | `rsg-hunting:server:butcher:openShop` | Opens the butcher's buy shop for the player |
 
+### Callbacks (ox_lib)
+| Callback | Description |
+|---|---|
+| `rsg-hunting:server:getSellData` | Returns the trapper's accepted items with current prices and the player's owned amounts |
+| `rsg-hunting:server:sellBasket` | Validates and sells a basket (`{ name, amount }[]`) in one transaction, returns the payout and refreshed items |
+
+### Console Commands
+| Command | Description |
+|---|---|
+| `resetvendorstock` | Resets all trapper stock to 0 |
+
 ### Exports
 | Export | Description |
 |---|---|
@@ -222,6 +253,15 @@ Config.FadeIn = true          -- fade NPCs in/out when spawning/despawning
 ---
 
 ## Troubleshooting
+
+**Trapper sell screen shows no images**
+- Confirm `Config.Image` points at your inventory image folder and the images from `installation/images/` were copied there.
+
+**Trapper says "You are too far from the trapper"**
+- The sale must happen within 6m of the trapper. Stand next to the NPC and try again.
+
+**Sell screen stuck open / mouse stuck**
+- Press `Esc`, or restart the resource — focus is released on resource stop.
 
 **Butcher NPCs not appearing**
 - Confirm you're within `Config.Performance.NpcSpawnDistance` (default 20 units) of a `Config.ButcherLocations` entry.

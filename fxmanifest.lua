@@ -5,7 +5,7 @@ game 'rdr3'
 name 'rsg-hunting'
 author 'RexShack'
 description 'Hunting, trapper and butcher script for RSG Framework'
-version '2.0.0'
+version '2.0.1'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -34,7 +34,12 @@ dependencies {
     'rsg-inventory',
 }
 
+ui_page 'html/index.html'
+
 files {
+    'html/index.html',
+    'html/style.css',
+    'html/script.js',
     'locales/*.json',
     'stream/*.ymap'
 }
