@@ -5,7 +5,7 @@ game 'rdr3'
 name 'rsg-hunting'
 author 'RexShack'
 description 'Hunting, trapper and butcher script for RSG Framework'
-version '2.0.1'
+version '2.0.2'
 
 shared_scripts {
     '@ox_lib/init.lua',
