@@ -1435,7 +1435,7 @@ Config.Animals = {
     {
         modelhash = `a_c_snakeferdelance_01`,
         skinable = true,
-        rewarditem1 = 'resource_skin_snack_ferdelance',
+        rewarditem1 = 'resource_skin_snake_ferdelance',
         rewarditem2 = 'resource_tooth_snake',
         rewarditem3 = nil,
         rewarditem4 = nil,
@@ -1444,7 +1444,7 @@ Config.Animals = {
     {
         modelhash = `a_c_snakeredboa10ft_01`,
         skinable = true,
-        rewarditem1 = 'resource_snake_skin_boa',
+        rewarditem1 = 'resource_skin_snake_boa',
         rewarditem2 = 'resource_tooth_snake',
         rewarditem3 = nil,
         rewarditem4 = nil,
@@ -1453,7 +1453,7 @@ Config.Animals = {
     {
         modelhash = `a_c_snakeredboa_01`,
         skinable = true,
-        rewarditem1 = 'resource_snake_skin_boa',
+        rewarditem1 = 'resource_skin_snake_boa',
         rewarditem2 = 'resource_tooth_snake',
         rewarditem3 = nil,
         rewarditem4 = nil,
@@ -1462,7 +1462,7 @@ Config.Animals = {
     {
         modelhash = `a_c_snakewater_01`,
         skinable = true,
-        rewarditem1 = 'resource_snake_skin_watersnake',
+        rewarditem1 = 'resource_skin_snake_watersnake',
         rewarditem2 = 'resource_tooth_snake',
         rewarditem3 = nil,
         rewarditem4 = nil,
@@ -1471,7 +1471,7 @@ Config.Animals = {
     {
         modelhash = `a_c_snake_01`,
         skinable = true,
-        rewarditem1 = 'resource_snake_skin_western_rattlesnake',
+        rewarditem1 = 'resource_skin_snake_western_rattlesnake',
         rewarditem2 = 'resource_tooth_snake',
         rewarditem3 = nil,
         rewarditem4 = nil,
