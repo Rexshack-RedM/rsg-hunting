@@ -12,12 +12,13 @@ Hunting, trapper and butcher script for the RSG Framework (RedM). Players skin a
 
 ### Trappers
 - 5 trapper NPCs with blips and an NUI sell screen (search, owned-only filter, quantity picker, basket, confirm)
-- Stock-based pricing: 1.25x below 50% of `maxStock`, 1.5x below 25%; stock saved to `vendor_stock.json`
+- Stock-based pricing per trapper (each trapper has its own stock): 1.25x below 50% of `maxStock`, 1.5x below 25%; saved to `vendor_stock.json` (old shared stock files are migrated automatically)
+- Stock decay: trappers sell their stock on over time (`Config.StockDecayMinutes` / `Config.StockDecayPercent`), so prices recover
 - Server validates distance, accepted items, ownership and cooldown, and rolls back if an item removal fails
 
 ### Butchers
-- 12 butcher NPCs (spawned near the player, fade in/out) with blips, ox_target or prompt interaction
-- Sell the carcass you are carrying for cash + meat, scaled by pelt quality (poor / good / perfect)
+- 12 butcher NPCs (spawned near the player, fade in/out) with blips, rsg-target or prompt interaction
+- Sell the carcass you are carrying, or one strapped to your horse (`Config.SellFromHorse`), for cash + meat, scaled by pelt quality (poor / good / perfect)
 - The server validates and deletes the carried carcass itself, so sales can't be faked or repeated
 - Optional `rsg-log` logging of every sale
 
@@ -29,7 +30,17 @@ Hunting, trapper and butcher script for the RSG Framework (RedM). Players skin a
   - **Extra skin chance**: chance of a second main skinning reward
 - Level-up notifications; XP is stored as player rep (`metadata.rep.hunting`), no extra table needed
 
+### Daily bounties
+- Each UTC day a few animals are bounties (`Config.Bounty`): extra butcher cash and an XP multiplier
+- Same for every player, survives restarts; check them at any trapper (**Today's Bounties**) or on the leaderboard
+- Default pool is every butcher animal paying at least `MinReward` (legendaries excluded), or set your own list
+
+### Clean kills
+- Skinning a perfect-quality animal multiplies its skinning XP (`Config.HuntingXP.CleanKillMultiplier`, capped at 3x). XP only, never items or cash, because pelt quality is read on the client
+
 ### Leaderboard
+- **All Time** and **This Week** tabs; weekly XP is tracked in the database (weeks start Monday 00:00 UTC)
+- Top hunters of last week win cash (`Config.HuntingXP.Weekly.Rewards`), collected at any trapper with **Claim Weekly Reward** (one claim per reward, guarded in SQL)
 - `/huntingboard` or the **Hunting Leaderboard** option on any trapper
 - NUI panel showing your rank, level, progress to next level and perks, plus the top 10 hunters
 - **Movable**: drag the header, position remembered; double-click the header to reset
@@ -46,7 +57,8 @@ Hunting, trapper and butcher script for the RSG Framework (RedM). Players skin a
 - `/huntingwebhooktest` (admin) sends a test message to every channel
 
 ## Requirements
-- `rsg-core`, `rsg-inventory`, `ox_lib`, `ox_target`, `oxmysql`
+- `rsg-core` (3.0.3+, provides locales, notify, callbacks and progress bar), `rsg-inventory`, `rsg-target`, `oxmysql`
+- No ox_lib needed
 - `rsg-log` (optional, butcher sale logging)
 
 ## Installation
@@ -56,7 +68,7 @@ Hunting, trapper and butcher script for the RSG Framework (RedM). Players skin a
    ```
    ensure rsg-hunting
    ```
-4. No SQL is needed.
+4. No SQL needed: the weekly leaderboard tables are created automatically on start (`install.sql` is included if you prefer to run it by hand).
 
 ## Configuration (`config.lua`)
 
@@ -65,12 +77,15 @@ Hunting, trapper and butcher script for the RSG Framework (RedM). Players skin a
 | `Config.DeleteCarcass` | Remove the carcass after skinning |
 | `Config.Image` | Item image folder used by the trapper UI |
 | `Config.BlipSprite` / `Config.BlipScale` | Trapper blips |
+| `Config.StockDecayMinutes` / `Config.StockDecayPercent` | How often and by how much trapper stock drops (0 = off) |
 | `Config.Vendors` | Trapper NPCs and the items each buys (`sellPrice`, `maxStock`, `canSell`, `stockBasedPrice`) |
 | `Config.HuntingXP` | XP, levels, perks and leaderboard (see below) |
 | `Config.Animals` | Skinnable animals: `modelhash`, `skinable`, `rewarditem1`–`rewarditem5` |
 | `Config.SellTime` | Butcher sell progress bar (ms) |
+| `Config.SellFromHorse` / `Config.HorseCarcassRange` | Butcher buys carcasses from your horse; max carcass distance |
+| `Config.Bounty` | Daily bounties: `Count`, `ButcherBonus` %, `XPMultiplier`, `MinReward`, optional `Animals` pool |
 | `Config.Poor/Good/PerfectMultiplier` | Butcher cash multipliers by quality (items: 1/2/3) |
-| `Config.KeyBind` / `Config.EnableTarget` | Butcher prompt key or ox_target |
+| `Config.KeyBind` / `Config.EnableTarget` | Butcher prompt key or rsg-target |
 | `Config.ServerCooldown` | Per-player reward cooldown (ms) |
 | `Config.EnableLogging` + `Config.Webhook*` | Butcher sale logging via rsg-log |
 | `Config.DistanceSpawn` / `Config.FadeIn` | Butcher NPC spawn distance and fade |
@@ -128,6 +143,7 @@ exports['rsg-hunting']:AwardHuntingXP(src, amount)   -- give hunting xp (handles
 exports['rsg-hunting']:GetHuntingXP(src)             -- current xp
 exports['rsg-hunting']:GetHuntingLevel(src)          -- level, label
 exports['rsg-hunting']:SendWebhook(channel, { title = '', description = '', src = playerId, fields = {} })
+exports['rsg-hunting']:GetDailyBounties()            -- labels of today's bounty animals
 ```
 
 ## Commands
@@ -138,18 +154,18 @@ exports['rsg-hunting']:SendWebhook(channel, { title = '', description = '', src 
 | `/huntingwebhooktest` | admin | Send a test embed to every webhook channel |
 
 ## Locales
-All text (notifications, menus, prompts, the trapper and leaderboard NUI, and Discord webhook embeds) comes from ox_lib JSON locales in `locales/`.
+All text (notifications, menus, prompts, the trapper and leaderboard NUI, and Discord webhook embeds) comes from JSON locales (loaded by rsg-core) in `locales/`.
 
 Included languages: `en`, `de`, `el`, `es`, `fr`, `ja`, `nl`, `pl`, `pt-br`, `ro`.
 
-The language follows ox_lib's convar, e.g. in `server.cfg`:
+The language follows rsg-core's convar (falls back to `ox:locale`), e.g. in `server.cfg`:
 ```
-setr ox:locale de
+setr rsg:locale de
 ```
 Level titles (`Config.HuntingXP.Levels[].label`), vendor/butcher names and butcher animal names are set in `config.lua`, so translate those there.
 
 ## Notes
-- Butcher pelt quality is read on the client (the server can't read it); the server still validates the carcass, distance, location and one sale per carcass.
+- Butcher pelt quality is read on the client (the server can't read it); the server still validates the carcass, distance, location and one sale per carcass. Animals with no quality (-1) are sold as poor.
 - If the leaderboard stays empty after players earn XP, check that your rsg-core stores rep in `players.metadata` under `rep`.
 
 ---

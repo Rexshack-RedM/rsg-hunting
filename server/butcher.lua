@@ -1,6 +1,4 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
-lib.locale()
-
 ------------------------------------------
 -- butcher: the client only sends the carried carcass's network id;
 -- the server checks the carcass, works out the reward and deletes it
@@ -18,7 +16,7 @@ local QualityMultiplier = {
 local ItemQuantity = { poor = 1, good = 2, perfect = 3 }
 
 local BUTCHER_RANGE = 8.0  -- player must be this close to a butcher
-local CARCASS_RANGE = 4.0  -- carcass must be this close to the player
+local CARCASS_RANGE = Config.HorseCarcassRange or 6.0  -- carcass (carried or on the horse) must be this close
 local COOLDOWN = Config.ServerCooldown or 2000
 
 local Cooldowns = {}
@@ -35,7 +33,7 @@ CreateThread(function()
 end)
 
 local function notify(src, desc, ntype)
-    TriggerClientEvent('ox_lib:notify', src, { title = locale('butcher_title'), description = desc, type = ntype, duration = 6000 })
+    TriggerClientEvent('RSGCore:Client:Notify', src, { title = locale('butcher_title'), description = desc, type = ntype, duration = 6000 })
 end
 
 local function nearButcher(coords)
@@ -52,7 +50,7 @@ local function suspicious(src, why)
     HuntingWebhook.Security(src, locale('wh_where_butcher'), why)
 end
 
-lib.callback.register('rsg-hunting:server:sellCarcass', function(src, netId, quality)
+local function handler_sellCarcass(src, netId, quality)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return false end
 
@@ -104,8 +102,8 @@ lib.callback.register('rsg-hunting:server:sellCarcass', function(src, netId, qua
     SoldCarcasses[netId] = os.time()
     DeleteEntity(carcass)
 
-    local bonus = (HuntingXP.GetPerks(src).butcherBonus or 0) / 100
-    local cash = math.floor(animal.rewardmoney * QualityMultiplier[quality] * (1 + bonus) * 100 + 0.5) / 100
+    local bonus = (HuntingXP.GetPerks(src).butcherBonus or 0) / 100 + HuntingBounty.ButcherBonus(animal.model)
+    local cash = math.floor((tonumber(animal.rewardmoney) or 0) * QualityMultiplier[quality] * (1 + bonus) * 100 + 0.5) / 100
     if cash > 0 then
         Player.Functions.AddMoney('cash', cash, 'rsg-hunting-butcher')
     end
@@ -122,6 +120,7 @@ lib.callback.register('rsg-hunting:server:sellCarcass', function(src, netId, qua
         { name = locale('wh_quality'), value = locale('quality_' .. quality) },
         { name = locale('wh_cash'), value = ('$%.2f'):format(cash) },
         { name = locale('wh_items'), value = #itemText > 0 and table.concat(itemText, ', ') or '-', inline = false },
+        { name = locale('wh_bounty'), value = HuntingBounty.Get(animal.model) and locale('yes') or locale('no') },
         { name = locale('wh_butcher_perk'), value = ('+%s%%'):format(math.floor(bonus * 100 + 0.5)) },
     }, cash)
 
@@ -133,11 +132,12 @@ lib.callback.register('rsg-hunting:server:sellCarcass', function(src, netId, qua
     local xpCfg = Config.HuntingXP
     if xpCfg and xpCfg.Enabled and xpCfg.ButcherXP then
         local mult = xpCfg.ButcherQualityMultiplier and xpCfg.ButcherQualityMultiplier[quality] or 1
-        HuntingXP.Award(src, HuntingXP.GetAnimalXP(animal.model) * mult)
+        HuntingXP.Award(src, HuntingXP.GetAnimalXP(animal.model) * mult * HuntingBounty.XPMultiplier(animal.model))
     end
 
     return true
-end)
+end
+RSGCore.Functions.CreateCallback('rsg-hunting:server:sellCarcass', function(src, cb, netId, quality) cb(handler_sellCarcass(src, netId, quality)) end)
 
 AddEventHandler('playerDropped', function()
     Cooldowns[source] = nil

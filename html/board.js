@@ -12,6 +12,7 @@
     const POS_KEY = 'rsg-hunting:boardPos';
     let L = {};
     let pinned = false;
+    let mode = 'all';
 
     // ---------- position (saved per client) ----------
     function clamp(x, y) {
@@ -59,12 +60,19 @@
         el('board-close').title = L.close || '';
         el('board-title').textContent = L.title;
         el('board-sub').textContent = fmt(L.total, d.total);
+        mode = d.mode || 'all';
+        el('tab-all').textContent = L.allTime || '';
+        el('tab-weekly').textContent = L.weekly || '';
+        el('board-tabs').classList.toggle('hidden', !d.weeklyEnabled);
+        document.querySelectorAll('.board-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
 
         const me = d.me;
         el('board-me-rank').textContent = me.rank ? '#' + me.rank : L.unranked;
         el('board-me-level').textContent = fmt(L.level, me.level, me.label);
         const toNext = me.nextXP ? fmt(L.next, me.nextXP - me.xp) : L.maxed;
-        el('board-me-xp').textContent = `${fmt(L.xp, me.xp)} · ${toNext}`;
+        el('board-me-xp').textContent = mode === 'weekly'
+            ? `${fmt(L.weekXP, me.weekXP || 0)} · ${fmt(L.xp, me.xp)}`
+            : `${fmt(L.xp, me.xp)} · ${toNext}`;
         const pct = me.nextXP ? Math.max(0, Math.min(100, ((me.xp - me.levelXP) / (me.nextXP - me.levelXP)) * 100)) : 100;
         const fill = el('board-me-fill');
         fill.style.width = pct + '%';
@@ -76,6 +84,18 @@
             `<span class="pill">${esc(L.butcher)} <b>+${p.butcherBonus || 0}%</b></span>` +
             `<span class="pill">${esc(L.extraSkin)} <b>${p.extraSkinChance || 0}%</b></span>`;
 
+        const extra = [];
+        if (d.bounties && d.bounties.length) {
+            extra.push(`<div class="extra-line"><span class="extra-label">${esc(L.bounties)}</span><b>${d.bounties.map(esc).join(', ')}</b></div>`);
+        }
+        if (mode === 'weekly' && d.rewards && d.rewards.length) {
+            extra.push(`<div class="extra-line"><span class="extra-label">${esc(L.rewards)}</span>${d.rewards.map((c, i) => `#${i + 1} <b>$${Number(c).toFixed(2)}</b>`).join(' · ')}</div>`);
+        }
+        if (d.unclaimed > 0) {
+            extra.push(`<div class="extra-line claim"><span class="extra-label">${esc(L.unclaimed)}</span><b>$${Number(d.unclaimed).toFixed(2)}</b></div>`);
+        }
+        el('board-extra').innerHTML = extra.join('');
+
         const list = el('board-list');
         if (!d.top.length) { list.innerHTML = `<div class="board-empty">${esc(L.empty)}</div>`; return; }
         list.innerHTML = d.top.map(e => `
@@ -83,7 +103,7 @@
                 <div class="rank-badge">${e.rank}</div>
                 <div class="row-main">
                     <div class="row-name">${esc(e.name)}</div>
-                    <div class="row-sub">${esc(fmt(L.level, e.level, e.label))}</div>
+                    ${e.level ? `<div class="row-sub">${esc(fmt(L.level, e.level, e.label))}</div>` : ''}
                 </div>
                 <div class="row-xp">${esc(fmt(L.xp, e.xp))}</div>
             </div>`).join('');
@@ -119,6 +139,10 @@
     });
 
     el('board-close').addEventListener('click', () => close());
+    document.querySelectorAll('.board-tab').forEach(t => t.addEventListener('click', () => {
+        if (pinned || t.dataset.mode === mode) return;
+        post('boardMode', { mode: t.dataset.mode });
+    }));
     el('board-pin').addEventListener('click', () => {
         // pin = keep it on screen as an overlay and hand control back to the game
         setPinned(true);

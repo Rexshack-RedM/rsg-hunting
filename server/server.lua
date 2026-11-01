@@ -1,6 +1,4 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
-lib.locale()
-
 ------------------------------------------
 -- server-side animal lookup: rewards come from the carcass model the
 -- SERVER sees, never from a list the client sends
@@ -48,7 +46,7 @@ end
 ------------------------------------------
 -- give rewards (client sends only the skinned carcass's network id)
 ------------------------------------------
-RegisterNetEvent('rsg-hunting:server:giverewards', function(netId)
+RegisterNetEvent('rsg-hunting:server:giverewards', function(netId, quality)
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
@@ -86,7 +84,7 @@ RegisterNetEvent('rsg-hunting:server:giverewards', function(netId)
     for _, itemName in ipairs(toGive) do
         if not exports['rsg-inventory']:CanAddItem(src, itemName, 1) then
             SkinnedCarcasses[netId] = nil -- let them try again once they have space
-            TriggerClientEvent('ox_lib:notify', src, {
+            TriggerClientEvent('RSGCore:Client:Notify', src, {
                 title = locale('inventory_full'),
                 type = 'error',
                 duration = 8000
@@ -104,11 +102,19 @@ RegisterNetEvent('rsg-hunting:server:giverewards', function(netId)
     local bonusItem = toGive[1]
     if chance > 0 and math.random(100) <= chance and exports['rsg-inventory']:CanAddItem(src, bonusItem, 1) then
         exports['rsg-inventory']:AddItem(src, bonusItem, 1, nil, nil, 'rsg-hunting-skinning-perk')
-        TriggerClientEvent('ox_lib:notify', src, { title = locale('hunting_xp_title'), description = locale('hunting_perk_extraskin'), type = 'inform' })
+        TriggerClientEvent('RSGCore:Client:Notify', src, { title = locale('hunting_xp_title'), description = locale('hunting_perk_extraskin'), type = 'inform' })
     end
 
     local model = GetEntityModel(carcass)
-    local xp = HuntingXP.GetAnimalXP(model)
+    local xp = HuntingXP.GetAnimalXP(model) * HuntingBounty.XPMultiplier(model)
+    -- clean kill: perfect pelt quality is read by the client (the server can't),
+    -- so it only ever adds a capped xp bonus, never items or cash
+    local cleanMult = Config.HuntingXP.CleanKillMultiplier or 1
+    if quality == 'perfect' and cleanMult > 1 then
+        xp = xp * math.min(cleanMult, 3)
+        TriggerClientEvent('RSGCore:Client:Notify', src, { title = locale('hunting_xp_title'), description = locale('hunting_clean_kill'), type = 'inform' })
+    end
+    xp = math.floor(xp)
     HuntingXP.Award(src, xp)
 
     local labels = {}

@@ -1,10 +1,10 @@
-lib.locale()
-
+local RSGCore = exports['rsg-core']:GetCoreObject()
 ------------------------------------------
 -- hunting leaderboard (movable NUI panel)
 ------------------------------------------
 local boardOpen = false   -- visible on screen
 local boardFocus = false  -- has mouse focus (not pinned)
+local boardMode = 'all'   -- 'all' | 'weekly'
 
 local function labels()
     return {
@@ -23,6 +23,12 @@ local function labels()
         drag      = locale('hunting_board_drag'),
         pin       = locale('hunting_board_pin'),
         close     = locale('ui_close'),
+        allTime   = locale('hunting_board_alltime'),
+        weekly    = locale('hunting_board_weekly'),
+        weekXP    = locale('hunting_board_weekxp'),
+        bounties  = locale('bounty_title'),
+        rewards   = locale('hunting_board_rewards'),
+        unclaimed = locale('hunting_board_unclaimed'),
     }
 end
 
@@ -37,20 +43,33 @@ function OpenHuntingLeaderboard()
     -- command while pinned / open = close it again
     if boardOpen then return closeBoard() end
 
-    local data = lib.callback.await('rsg-hunting:server:getLeaderboard', false)
+    boardMode = 'all'
+    local data = RSGCore.Functions.AwaitCallback('rsg-hunting:server:getLeaderboard', nil, boardMode)
     if not data then
-        lib.notify({ title = locale('hunting_board_title'), description = locale('hunting_board_unavailable'), type = 'error' })
+        RSGCore.Functions.Notify({ title = locale('hunting_board_title'), description = locale('hunting_board_unavailable'), type = 'error' })
         return
     end
 
     boardOpen, boardFocus = true, true
     SetNuiFocus(true, true)
-    SendNUIMessage({ action = 'boardOpen', labels = labels(), top = data.top, total = data.total, me = data.me })
+    data.action, data.labels = 'boardOpen', labels()
+    SendNUIMessage(data)
 end
 
 RegisterNUICallback('boardClose', function(_, cb)
     boardOpen, boardFocus = false, false
     SetNuiFocus(false, false)
+    cb('ok')
+end)
+
+-- switch all-time / weekly tab
+RegisterNUICallback('boardMode', function(body, cb)
+    boardMode = body and body.mode == 'weekly' and 'weekly' or 'all'
+    local data = RSGCore.Functions.AwaitCallback('rsg-hunting:server:getLeaderboard', nil, boardMode)
+    if data and boardOpen then
+        data.action = 'boardUpdate'
+        SendNUIMessage(data)
+    end
     cb('ok')
 end)
 
@@ -67,9 +86,10 @@ CreateThread(function()
         if boardOpen then
             Wait(math.max(15, (Config.HuntingXP.Leaderboard.CacheSeconds or 60)) * 1000)
             if boardOpen then
-                local data = lib.callback.await('rsg-hunting:server:getLeaderboard', false)
+                local data = RSGCore.Functions.AwaitCallback('rsg-hunting:server:getLeaderboard', nil, boardMode)
                 if data and boardOpen then
-                    SendNUIMessage({ action = 'boardUpdate', top = data.top, total = data.total, me = data.me })
+                    data.action = 'boardUpdate'
+                    SendNUIMessage(data)
                 end
             end
         else

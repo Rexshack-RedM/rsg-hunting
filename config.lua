@@ -6,6 +6,20 @@ Config.DeleteCarcass = false -- this will ensure the carcass is removed if true
 Config.Image = 'rsg-inventory/html/images/' -- location where your item images are stored
 Config.BlipSprite = 'blip_shop_animal_trapper'
 Config.BlipScale = 0.2
+Config.StockDecayMinutes = 30 -- trapper stock sells on every X minutes (0 = never, prices stay low once stocked)
+Config.StockDecayPercent = 10 -- % of each item's stock removed each time (each trapper has its own stock)
+
+----------------------------------
+-- daily bounties: animals that pay extra at the butcher and give extra xp today
+----------------------------------
+Config.Bounty = {
+    Enabled      = true,
+    Count        = 2,    -- bounty animals per day (picked per UTC day, same for everyone)
+    ButcherBonus = 50,   -- % extra butcher cash
+    XPMultiplier = 2,    -- xp multiplier for skinning and butcher sales
+    MinReward    = 3,    -- default pool: Config.Animal entries paying at least this (legendaries excluded)
+    Animals      = {},   -- optional fixed pool: { { model = -1124266369, label = 'Bear' }, ... }
+}
 
 ----------------------------------
 
@@ -785,6 +799,14 @@ Config.HuntingXP = {
         { level = 5,  xp = 1500,  label = 'Woodsman',      perks = { trapperBonus = 15, butcherBonus = 15, extraSkinChance = 15 } },
         { level = 6,  xp = 3000,  label = 'Frontiersman',  perks = { trapperBonus = 20, butcherBonus = 20, extraSkinChance = 20 } },
         { level = 7,  xp = 6000,  label = 'Master Hunter', perks = { trapperBonus = 25, butcherBonus = 25, extraSkinChance = 30 } },
+    },
+    -- clean kill: skinning a perfect-quality animal multiplies its skinning xp (max 3)
+    CleanKillMultiplier = 1.5,
+    -- weekly leaderboard (needs install.sql). weeks start Monday 00:00 UTC
+    Weekly = {
+        Enabled   = true,
+        Rewards   = { 100, 50, 25 }, -- cash for rank 1, 2, 3... of last week, collected at any trapper
+        KeepWeeks = 4,               -- weeks of history kept in the database
     },
     Leaderboard = {
         Command      = 'huntingboard', -- chat command to open the leaderboard ('' to disable)
@@ -1634,11 +1656,13 @@ Config.Animals = {
 ---------------------------------
 Config.Debug = false
 Config.SellTime = 10000          -- butcher sell progress bar (ms)
+Config.SellFromHorse = true      -- butcher also buys a carcass strapped to your horse
+Config.HorseCarcassRange = 6.0   -- max distance (m) between you and the carcass/horse
 Config.PoorMultiplier = 1        -- butcher cash/item multipliers by carcass quality
 Config.GoodMultiplier = 2
 Config.PerfectMultiplier = 3
 Config.KeyBind = 'J'             -- prompt key when Config.EnableTarget = false
-Config.EnableTarget = true       -- ox_target on butcher NPCs instead of prompts
+Config.EnableTarget = true       -- rsg-target on butcher NPCs instead of prompts
 Config.ServerCooldown = 2000     -- per-player cooldown on skinning/butcher rewards (ms)
 Config.EnableLogging = true      -- send butcher sales to rsg-log
 

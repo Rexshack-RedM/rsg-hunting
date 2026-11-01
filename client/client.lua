@@ -1,5 +1,3 @@
-lib.locale()
-
 ---------------------------------------------
 -- trapper blips
 ---------------------------------------------
@@ -33,14 +31,16 @@ local lastSkinTime = 0
 
 local function onSkinned(carcass, animal)
     Wait(1000) -- let the game finish spawning the carried skin
-    local holding = Citizen.InvokeNative(0xD806CD2A4F2C2996, cache.ped) -- GetFirstEntityPedIsCarrying
-    if holding and holding ~= 0 then
+    local holding = Citizen.InvokeNative(0xD806CD2A4F2C2996, PlayerPedId()) -- GetFirstEntityPedIsCarrying
+    if holding and holding ~= 0 and not IsPedAPlayer(holding) then
         DeleteEntity(holding)
     end
 
-    -- only the carcass is sent; the server works out the rewards itself
+    -- only the carcass (and its pelt quality, used for the clean-kill xp bonus) is sent;
+    -- the server works out the rewards itself
+    local quality = Citizen.InvokeNative(0x7BCC6087D130312A, carcass) == 2 and 'perfect' or nil -- _GET_PED_QUALITY (natives/db)
     local netId = NetworkGetEntityIsNetworked(carcass) and NetworkGetNetworkIdFromEntity(carcass) or 0
-    TriggerServerEvent('rsg-hunting:server:giverewards', netId)
+    TriggerServerEvent('rsg-hunting:server:giverewards', netId, quality)
 
     if Config.DeleteCarcass then
         Wait(1000)
@@ -57,7 +57,7 @@ CreateThread(function()
                 local view = exports[GetCurrentResourceName()]:DataViewNativeGetEventData(0, index, 3)
                 local looter, carcass, completed = view['0'], view['2'], view['4'] == 1
 
-                if completed and looter == cache.ped then
+                if completed and looter == PlayerPedId() then
                     local now = GetGameTimer()
                     if now - lastSkinTime >= SKIN_EVENT_COOLDOWN then
                         local animal = AnimalSkinLookup[GetEntityModel(carcass)]

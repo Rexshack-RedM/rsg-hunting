@@ -1,5 +1,3 @@
-lib.locale()
-
 --------------------------------------
 -- butcher npcs: spawn when close, despawn when far
 --------------------------------------
@@ -39,7 +37,7 @@ local function spawnButcher(v)
     SetPedFleeAttributes(ped, 0, false)
 
     if Config.EnableTarget then
-        exports.ox_target:addLocalEntity(ped, {
+        exports['rsg-target']:addLocalEntity(ped, {
             {
                 name = 'npc_butcher',
                 icon = 'fa-solid fa-paw',
@@ -56,7 +54,7 @@ end
 
 local function despawnButcher(ped)
     if not DoesEntityExist(ped) then return end
-    if Config.EnableTarget then exports.ox_target:removeLocalEntity(ped, 'npc_butcher') end
+    if Config.EnableTarget then exports['rsg-target']:removeLocalEntity(ped, 'npc_butcher') end
     if Config.FadeIn then fade(ped, 255, 0) end
     DeletePed(ped)
 end
@@ -64,7 +62,7 @@ end
 CreateThread(function()
     local range = Config.DistanceSpawn or 20.0
     while true do
-        local coords = GetEntityCoords(cache.ped)
+        local coords = GetEntityCoords(PlayerPedId())
         for k, v in ipairs(Config.ButcherLocations) do
             local near = #(coords - v.npccoords.xyz) < range
             local current = spawnedPeds[k]

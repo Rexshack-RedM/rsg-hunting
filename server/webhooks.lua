@@ -1,6 +1,4 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
-lib.locale()
-
 ---------------------------------------------------------------
 -- discord webhooks: queued, rate limited, retried on 429
 ---------------------------------------------------------------
@@ -226,7 +224,7 @@ RSGCore.Commands.Add('huntingwebhooktest', locale('wh_test_help'), {}, false, fu
         })
     end
     if source > 0 then
-        TriggerClientEvent('ox_lib:notify', source, { title = locale('hunting_xp_title'), description = locale('wh_test_sent'), type = 'success' })
+        TriggerClientEvent('RSGCore:Client:Notify', source, { title = locale('hunting_xp_title'), description = locale('wh_test_sent'), type = 'success' })
     else
         print('[rsg-hunting] webhook test sent')
     end
