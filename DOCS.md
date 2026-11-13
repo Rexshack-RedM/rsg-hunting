@@ -102,4 +102,4 @@ The server validates every skinning and sale: carcass exists, is dead, is close 
 | No leaderboard | Check `Leaderboard.Command` and `HuntingXP.Weekly.Enabled` |
 | Missing item images | Check `Config.Image` |
 
-Support: https://buymeacoffee.com/rexshack
+Support the Project : https://rexshack.tebex.store/
