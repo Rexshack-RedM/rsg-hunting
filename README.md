@@ -168,6 +168,10 @@ Level titles (`Config.HuntingXP.Levels[].label`), vendor/butcher names and butch
 - Butcher pelt quality is read on the client (the server can't read it); the server still validates the carcass, distance, location and one sale per carcass. Animals with no quality (-1) are sold as poor.
 - If the leaderboard stays empty after players earn XP, check that your rsg-core stores rep in `players.metadata` under `rep`.
 
+## Database
+
+Tables (`hunting_weekly`, `hunting_weekly_rewards`) are created automatically on first start while `Config.AutoDatabase = true` (default); the database user needs `CREATE` permission. To install manually, set `Config.AutoDatabase = false` in the config and import `install.sql` once.
+
 ---
 ## rsg-skills integration
 
