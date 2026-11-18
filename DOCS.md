@@ -1,4 +1,4 @@
-# rsg-hunting – Docs (v3.2.2)
+# rsg-hunting – Docs (v3.3.0)
 
 ## Contents
 1. Files
@@ -101,5 +101,15 @@ The server validates every skinning and sale: carcass exists, is dead, is close 
 | Trapper prices low | Stock is full; wait for decay or `/resetvendorstock` |
 | No leaderboard | Check `Leaderboard.Command` and `HuntingXP.Weekly.Enabled` |
 | Missing item images | Check `Config.Image` |
+
+## rsg-skills integration
+
+`Config.Skills = { Enabled, Skill, MirrorXP, SellBonus, ExtraYield }`, plus the global helpers `SkillsActive()` and `SkillPerk(src, perk)` defined at the end of `config.lua`.
+- `HuntingXP.Award` calls `exports['rsg-skills']:AddXP(src, 'hunting', amount, 'hunting', { raw = true })` after the rep is added (raw so the two totals stay equal).
+- The butcher adds `GetPerk(src, 'hunting', 'sell_bonus') / 100` to its bonus before computing the cash.
+- Skinning adds `GetPerk(src, 'hunting', 'extra_yield')` to the existing `extraSkinChance`.
+- The trapper vendor sale is not changed, because its prices are shown in the shop UI.
+- rsg-skills imports the old `hunting` rep value once per character (`repImport`), so existing levels carry over.
+
 
 Support the Project : https://rexshack.tebex.store/

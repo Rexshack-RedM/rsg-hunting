@@ -169,4 +169,14 @@ Level titles (`Config.HuntingXP.Levels[].label`), vendor/butcher names and butch
 - If the leaderboard stays empty after players earn XP, check that your rsg-core stores rep in `players.metadata` under `rep`.
 
 ---
+## rsg-skills integration
+
+Optional. With `rsg-skills` started (`Config.Skills`):
+- every hunting XP award is also given to the shared `hunting` skill (`MirrorXP`);
+- the skill's `sell_bonus` perk is added to butcher cash payouts (`SellBonus`);
+- the skill's `extra_yield` perk adds to the chance of a second main skinning reward (`ExtraYield`).
+
+The existing hunting XP, levels, weekly leaderboard and level perks keep working. Set `Config.Skills.Enabled = false` to turn it all off.
+
+
 Support the Project : https://rexshack.tebex.store/

@@ -100,6 +100,11 @@ function HuntingXP.Award(src, amount)
     local after = before + amount
     addWeeklyXP(Player, amount)
 
+    -- rsg-skills: mirror the XP (raw, so the amount matches; rsg-skills notifies on its own level-ups)
+    if SkillsActive() and Config.Skills.MirrorXP then
+        exports['rsg-skills']:AddXP(src, Config.Skills.Skill, amount, 'hunting', { raw = true })
+    end
+
     if Cfg.Notify then
         TriggerClientEvent('RSGCore:Client:Notify', src, {
             title = locale('hunting_xp_title'),
